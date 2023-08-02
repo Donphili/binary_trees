@@ -1,106 +1,115 @@
 #include "binary_trees.h"
-/**
- * successor - Get the next successor thats the min node in the right subtree
- * @node: tree to check
- * Return: the min value of this tree
- */
-int successor(bst_t *node)
-{
-	int left = 0;
 
-	if (node == NULL)
-	{
-		return (0);
-	}
+/**
+ * in_order_successor - Returns the successor node
+ * @root: root node
+ * Return: successor
+ */
+avl_t *in_order_successor(avl_t *root)
+{
+	avl_t *temp;
+
+	temp = root;
+	if (root->left)
+		temp = in_order_successor(root->left);
+
+	return (temp);
+}
+/**
+ * no_successor - Performes the removing if there is no successor
+ * @root: root node
+ * @temp: pointer to the node to be freed
+ * Return: pointer to root
+ */
+bst_t *no_successor(bst_t *root, bst_t *temp)
+{
+	if (!temp->parent)
+		root = NULL;
+	else if (temp->n > temp->parent->n)
+		temp->parent->right = NULL;
 	else
-	{
-		left = successor(node->left);
-		if (left == 0)
-		{
-			return (node->n);
-		}
-		return (left);
-	}
-
+		temp->parent->left = NULL;
+	free(temp);
+	return (root);
 }
 /**
- * two_children - function that gets the next successor using the min
- * value in the right subtree, and then replace the node value for
- * this successor
- * @root: node tat has two kids
- * Return: the value located
+ * successor_new_childs - sets the new childs for the successor
+ * @successor: successor node
+ * @temp: node to be deleted
+ * Return: void
  */
-int two_children(bst_t *root)
+void successor_new_childs(bst_t *successor, bst_t *temp)
 {
-	int new_value = 0;
-
-	new_value = successor(root->right);
-	root->n = new_value;
-	return (new_value);
+	if (temp->left != successor)
+	{
+		successor->left = temp->left;
+		if (successor->left)
+			successor->left->parent = successor;
+	}
+	if (temp->right != successor)
+	{
+		successor->right = temp->right;
+		if (successor->right)
+			successor->right->parent = successor;
+	}
 }
 /**
- *remove_type - function thadt deletes a node depending of its children
- *@root: node to remove
- *Return: 0 if it has no upsrings or other value if it has
+ * successor_parent - sets the correct child to the successor parent
+ * @successor: node
+ * Return: void
  */
-int remove_type(bst_t *root)
+void successor_parent(bst_t *successor)
 {
-	if (!root->left && !root->right)
-	{
-		if (root->parent->right == root)
-			root->parent->right = NULL;
-		else
-			root->parent->left = NULL;
-		free(root);
-		return (0);
-	}
-	else if ((!root->left && root->right) || (!root->right && root->left))
-	{
-		if (!root->left)
-		{
-			if (root->parent->right == root)
-				root->parent->right = root->right;
-			else
-				root->parent->left = root->right;
-			root->right->parent = root->parent;
-		}
-		if (!root->right)
-		{
-			if (root->parent->right == root)
-				root->parent->right = root->left;
-			else
-				root->parent->left = root->left;
-			root->left->parent = root->parent;
-		}
-		free(root);
-		return (0);
-	}
+	if (successor->parent->n > successor->n)
+		successor->parent->left = successor;
 	else
-		return (two_children(root));
+		successor->parent->right = successor;
 }
 /**
- * bst_remove - deletes a node from a BST tree
- * @root: root of the tree
- * @value: node with this value to delete
- * Return: the tree surffles
+ * bst_remove - Search a value in a binary tree.
+ *
+ * @root: of a subtree.
+ * @value: value to search.
+ * Return: The root of the tree.
  */
+
 bst_t *bst_remove(bst_t *root, int value)
 {
-	int type = 0;
+	avl_t *successor = NULL, *temp;
 
-	if (root == NULL)
-		return (NULL);
-	if (value < root->n)
-		bst_remove(root->left, value);
-	else if (value > root->n)
-		bst_remove(root->right, value);
-	else if (value == root->n)
+	temp = root;
+	while (temp)
 	{
-		type = remove_type(root);
-		if (type != 0)
-			bst_remove(root->right, type);
+		if (temp->n < value)
+			temp = temp->right;
+		else if (temp->n > value)
+			temp = temp->left;
+		else if (temp->n == value)
+			break;
 	}
+	if (!temp)
+		return (root);
+	if (temp->right)
+		successor = in_order_successor(temp->right);
+	else if (temp->left)
+		successor = temp->left;
+	if (!successor)
+		return (no_successor(root, temp));
+	if ((successor->right && temp->right) && successor != temp->right)
+	{
+		successor->right->parent = successor->parent;
+		if (successor->right->parent->n > successor->right->n)
+			successor->right->parent->left = successor->right;
+		else
+			successor->right->parent->right = successor->right;
+	}
+	else if (!successor->right && successor->parent != temp)
+		successor->parent->left = NULL;
+	successor->parent = temp->parent;
+	if (successor->parent)
+		successor_parent(successor);
 	else
-		return (NULL);
+		root = successor;
+	successor_new_childs(successor, temp), free(temp);
 	return (root);
 }
